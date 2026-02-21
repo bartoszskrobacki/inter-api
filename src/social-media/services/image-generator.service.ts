@@ -1,5 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { createCanvas } from '@napi-rs/canvas';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import * as pureimage from 'pureimage';
+import * as path from 'path';
+import { PassThrough } from 'stream';
 
 interface Meal {
   id: number;
@@ -14,15 +16,37 @@ interface Promotion {
 }
 
 @Injectable()
-export class ImageGeneratorService {
+export class ImageGeneratorService implements OnModuleInit {
   private readonly logger = new Logger(ImageGeneratorService.name);
+
+  async onModuleInit() {
+    await this.loadFonts();
+  }
+
+  private async loadFonts(): Promise<void> {
+    const fontDir = path.join(__dirname, '..', '..', 'assets', 'fonts');
+
+    const regular = pureimage.registerFont(
+      path.join(fontDir, 'Arial.ttf'),
+      'Arial',
+    );
+    const bold = pureimage.registerFont(
+      path.join(fontDir, 'Arial Bold.ttf'),
+      'Arial Bold',
+    );
+
+    await regular.load();
+    await bold.load();
+
+    this.logger.log('Fonts loaded');
+  }
 
   async generatePromotionImage(promotion: Promotion): Promise<Buffer> {
     this.logger.log(`Generating image for promotion: ${promotion.name}`);
 
     const width = 1200;
     const height = 630;
-    const canvas = createCanvas(width, height);
+    const canvas = pureimage.make(width, height);
     const ctx = canvas.getContext('2d');
 
     // Background
@@ -36,7 +60,7 @@ export class ImageGeneratorService {
 
     // Title
     ctx.fillStyle = '#1a1a1a';
-    ctx.font = 'bold 56px Arial';
+    ctx.font = '56px "Arial Bold"';
     ctx.fillText(promotion.name.toUpperCase(), 60, 120);
 
     // Underline
@@ -48,39 +72,30 @@ export class ImageGeneratorService {
     ctx.stroke();
 
     // Meals list
-    ctx.fillStyle = '#333333';
-    ctx.font = '28px Arial';
     let yOffset = 220;
 
-    promotion.meals.forEach((meal, index) => {
-      // Meal name
-      ctx.font = 'bold 32px Arial';
+    for (const [index, meal] of promotion.meals.entries()) {
+      ctx.font = '32px "Arial Bold"';
+      ctx.fillStyle = '#333333';
       ctx.fillText(`${index + 1}. ${meal.name}`, 60, yOffset);
 
-      // Meal description
       if (meal.description) {
-        ctx.font = '24px Arial';
+        ctx.font = '24px "Arial"';
         ctx.fillStyle = '#666666';
         ctx.fillText(meal.description, 80, yOffset + 35);
-        ctx.fillStyle = '#333333';
       }
 
-      // Price
-      ctx.font = 'bold 28px Arial';
+      ctx.font = '28px "Arial Bold"';
       ctx.fillStyle = '#ff6b35';
       ctx.fillText(`${meal.price} zł`, width - 200, yOffset);
-      ctx.fillStyle = '#333333';
 
       yOffset += meal.description ? 100 : 70;
 
-      // Prevent overflow
-      if (yOffset > height - 100) {
-        return;
-      }
-    });
+      if (yOffset > height - 100) break;
+    }
 
     // Footer
-    ctx.font = 'italic 20px Arial';
+    ctx.font = '20px "Arial"';
     ctx.fillStyle = '#999999';
     const timestamp = new Date().toLocaleString('pl-PL', {
       day: '2-digit',
@@ -91,12 +106,20 @@ export class ImageGeneratorService {
     });
     ctx.fillText(`Wygenerowano: ${timestamp}`, 60, height - 40);
 
-    // Add invisible unique pixel to prevent Facebook duplicate detection
+    // Anti-duplicate pixel for Facebook
     const uniqueColor = Math.floor(Math.random() * 10);
     ctx.fillStyle = `rgba(255, 255, 255, 0.0${uniqueColor})`;
     ctx.fillRect(width - 1, height - 1, 1, 1);
 
     this.logger.log('Image generated successfully');
-    return canvas.toBuffer('image/png');
+    return this.canvasToBuffer(canvas);
+  }
+
+  private async canvasToBuffer(canvas: ReturnType<typeof pureimage.make>): Promise<Buffer> {
+    const chunks: Buffer[] = [];
+    const stream = new PassThrough();
+    stream.on('data', (chunk: Buffer) => chunks.push(Buffer.from(chunk)));
+    await pureimage.encodePNGToStream(canvas, stream);
+    return Buffer.concat(chunks);
   }
 }
