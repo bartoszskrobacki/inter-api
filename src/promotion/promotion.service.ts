@@ -6,6 +6,7 @@ import { Promotion } from './entities/promotion.entity';
 import { Meal } from './entities/meal.entity';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { spawn } from 'child_process';
 
 @Injectable()
 export class PromotionService {
@@ -115,7 +116,9 @@ export class PromotionService {
       );
     }
 
-    return await this.promotionRepository.save(promotion);
+    const saved = await this.promotionRepository.save(promotion);
+    this.triggerRebuild();
+    return saved;
   }
 
   async updatePromotion(
@@ -168,6 +171,7 @@ export class PromotionService {
       // Ignore errors
     });
 
+    this.triggerRebuild();
     return savedPromotion;
   }
 
@@ -176,6 +180,14 @@ export class PromotionService {
     await this.promotionRepository.remove(promotion);
     await this.deleteImage(id);
     this.logger.log(`Promotion ${id} deleted`);
+    this.triggerRebuild();
+  }
+
+  private triggerRebuild(): void {
+    const scriptPath = path.join(process.env.HOME || '~', 'rebuild-cafeteria.sh');
+    const child = spawn('bash', [scriptPath], { detached: true, stdio: 'ignore' });
+    child.unref();
+    this.logger.log(`Rebuild triggered: ${scriptPath}`);
   }
 }
 
