@@ -16,6 +16,9 @@ export class Promotion {
   @Column()
   name: string;
 
+  @Column({ unique: true })
+  tag: string;
+
   @OneToMany(() => Meal, (meal) => meal.promotion, {
     cascade: true,
     eager: true,

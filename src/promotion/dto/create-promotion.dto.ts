@@ -34,6 +34,10 @@ export class CreatePromotionDto {
   @IsNotEmpty()
   name: string;
 
+  @IsString()
+  @IsNotEmpty()
+  tag: string;
+
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => MealDto)

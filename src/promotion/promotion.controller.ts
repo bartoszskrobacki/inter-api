@@ -35,11 +35,12 @@ export class PromotionController {
     return this.promotionService.getAllPromotions();
   }
 
-  @Get(':id')
-  async getPromotion(@Param('id') id: string) {
-    this.logger.log(`GET /promotion/${id} - Fetching promotion with image`);
+  @Get(':tag')
+  async getPromotion(@Param('tag') tag: string) {
+    this.logger.log(`GET /promotion/${tag} - Fetching promotion with image`);
 
-    const promotion = await this.promotionService.getPromotion(id);
+    const promotion = await this.promotionService.getPromotion(tag);
+    const { id } = promotion;
 
     let imageBuffer: Buffer;
 

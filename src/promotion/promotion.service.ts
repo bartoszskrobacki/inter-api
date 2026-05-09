@@ -37,14 +37,14 @@ export class PromotionService {
     }
   }
 
-  async getPromotion(id: string): Promise<Promotion> {
+  async getPromotion(tag: string): Promise<Promotion> {
     const promotion = await this.promotionRepository.findOne({
-      where: { id },
+      where: { tag },
       relations: ['meals'],
     });
 
     if (!promotion) {
-      throw new NotFoundException(`Promotion ${id} not found`);
+      throw new NotFoundException(`Promotion with tag "${tag}" not found`);
     }
 
     return promotion;
@@ -100,6 +100,7 @@ export class PromotionService {
     const promotion = this.promotionRepository.create({
       id,
       name: createDto.name || 'New Promotion',
+      tag: createDto.tag,
       meals: [],
     });
 
@@ -137,12 +138,16 @@ export class PromotionService {
       promotion = this.promotionRepository.create({
         id,
         name: updateDto.name || 'New Promotion',
+        tag: updateDto.tag,
         meals: [],
       });
     } else {
       // Update existing
       if (updateDto.name) {
         promotion.name = updateDto.name;
+      }
+      if (updateDto.tag) {
+        promotion.tag = updateDto.tag;
       }
 
       // Remove old meals
