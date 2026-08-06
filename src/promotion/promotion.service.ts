@@ -149,6 +149,7 @@ export class PromotionService {
       if (updateDto.tag) {
         promotion.tag = updateDto.tag;
       }
+      promotion.updatedAt = new Date();
 
       // Remove old meals
       if (promotion.meals && promotion.meals.length > 0) {
