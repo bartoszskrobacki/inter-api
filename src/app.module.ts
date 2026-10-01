@@ -7,6 +7,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PromotionModule } from './promotion/promotion.module';
 import { AuthModule } from './auth/auth.module';
+import { MenuModule } from './menu/menu.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { AuthModule } from './auth/auth.module';
     ]),
     AuthModule,
     PromotionModule,
+    MenuModule,
   ],
   controllers: [AppController],
   providers: [
